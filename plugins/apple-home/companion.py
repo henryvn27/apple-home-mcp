@@ -91,6 +91,7 @@ def _arguments(arguments):
 def _read_line(connection):
     chunks = []
     size = 0
+    terminated = False
     while True:
         chunk = connection.recv(min(65536, MAX_MESSAGE_BYTES + 1 - size))
         if not chunk:
@@ -98,6 +99,7 @@ def _read_line(connection):
         newline = chunk.find(b"\n")
         if newline >= 0:
             chunks.append(chunk[:newline])
+            terminated = True
             break
         chunks.append(chunk)
         size += len(chunk)
@@ -106,6 +108,8 @@ def _read_line(connection):
     raw = b"".join(chunks)
     if len(raw) > MAX_MESSAGE_BYTES:
         raise CompanionError("Apple Home Bridge response exceeded 1 MiB")
+    if not terminated:
+        raise CompanionError("Apple Home Bridge response was not newline-terminated")
     if not raw:
         raise CompanionError("Apple Home Bridge returned no response")
     try:
