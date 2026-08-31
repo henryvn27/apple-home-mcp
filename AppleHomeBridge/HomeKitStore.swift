@@ -63,15 +63,37 @@ final class HomeKitStore: NSObject, HomeStore, @preconcurrency HMHomeManagerDele
         return try JSONValue.fromFoundation(characteristic.value)
     }
 
-    func write(_ reference: CharacteristicReference, value: JSONValue) async throws {
-        let characteristic = try resolve(reference)
+    func writeApproval(
+        _ reference: CharacteristicReference,
+        value: JSONValue
+    ) throws -> ApprovalPresentation? {
+        let path = try resolvePath(reference)
+        guard path.characteristic.properties.contains(HMCharacteristicPropertyWritable) else {
+            throw BridgeError("not_writable", "characteristic is not writable")
+        }
+        _ = try ValueValidator.validate(
+            value,
+            metadata: metadataRecord(path.characteristic.metadata)
+        )
+        guard serviceRequiresHumanApproval(path.service) else { return nil }
+        return ApprovalPresentation(
+            title: "Approve Home control",
+            detail: "Set \(path.characteristic.localizedDescription) on \(path.accessory.name) "
+                + "(\(path.service.name), \(path.home.name)) to \(value.approvalDescription)."
+        )
+    }
+
+    func write(
+        _ reference: CharacteristicReference,
+        value: JSONValue,
+        humanApprovalGranted: Bool
+    ) async throws {
+        let path = try resolvePath(reference)
+        let characteristic = path.characteristic
         guard characteristic.properties.contains(HMCharacteristicPropertyWritable) else {
             throw BridgeError("not_writable", "characteristic is not writable")
         }
-        guard let service = characteristic.service else {
-            throw BridgeError("not_found", "characteristic service is missing")
-        }
-        if serviceRequiresHumanApproval(service) {
+        if serviceRequiresHumanApproval(path.service), !humanApprovalGranted {
             throw BridgeError("human_approval_required", "this high-risk Home control must be approved in the app")
         }
         let validated = try ValueValidator.validate(value, metadata: metadataRecord(characteristic.metadata))
@@ -98,9 +120,18 @@ final class HomeKitStore: NSObject, HomeStore, @preconcurrency HMHomeManagerDele
         }.sorted(by: namedBefore)
     }
 
-    func runScene(_ reference: SceneReference) async throws {
+    func sceneApproval(_ reference: SceneReference) throws -> ApprovalPresentation? {
         let (home, actionSet) = try resolve(reference)
-        if actionSetRequiresHumanApproval(actionSet) {
+        guard actionSetRequiresHumanApproval(actionSet) else { return nil }
+        return ApprovalPresentation(
+            title: "Approve Home scene",
+            detail: "Run scene \(actionSet.name) in \(home.name)."
+        )
+    }
+
+    func runScene(_ reference: SceneReference, humanApprovalGranted: Bool) async throws {
+        let (home, actionSet) = try resolve(reference)
+        if actionSetRequiresHumanApproval(actionSet), !humanApprovalGranted {
             throw BridgeError("human_approval_required", "this high-risk scene must be approved in the app")
         }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -109,17 +140,6 @@ final class HomeKitStore: NSObject, HomeStore, @preconcurrency HMHomeManagerDele
                 else { continuation.resume() }
             }
         }
-    }
-
-    func characteristicRequiresHumanApproval(_ reference: CharacteristicReference) throws -> Bool {
-        guard let service = try resolve(reference).service else {
-            throw BridgeError("not_found", "characteristic service is missing")
-        }
-        return serviceRequiresHumanApproval(service)
-    }
-
-    func sceneRequiresHumanApproval(_ reference: SceneReference) throws -> Bool {
-        actionSetRequiresHumanApproval(try resolve(reference).1)
     }
 
     private var authorizationDescription: String {
@@ -190,6 +210,12 @@ final class HomeKitStore: NSObject, HomeStore, @preconcurrency HMHomeManagerDele
     }
 
     private func resolve(_ reference: CharacteristicReference) throws -> HMCharacteristic {
+        try resolvePath(reference).characteristic
+    }
+
+    private func resolvePath(
+        _ reference: CharacteristicReference
+    ) throws -> (home: HMHome, accessory: HMAccessory, service: HMService, characteristic: HMCharacteristic) {
         try requireReady()
         let homes = manager.homes.filter { id($0.uniqueIdentifier) == reference.homeID }
         let home = try UniqueLookup.one(homes, kind: "home")
@@ -200,7 +226,12 @@ final class HomeKitStore: NSObject, HomeStore, @preconcurrency HMHomeManagerDele
         let characteristics = service.characteristics.filter {
             id($0.uniqueIdentifier) == reference.characteristicID
         }
-        return try UniqueLookup.one(characteristics, kind: "characteristic")
+        return (
+            home,
+            accessory,
+            service,
+            try UniqueLookup.one(characteristics, kind: "characteristic")
+        )
     }
 
     private func resolve(_ reference: SceneReference) throws -> (HMHome, HMActionSet) {
@@ -234,6 +265,22 @@ final class HomeKitStore: NSObject, HomeStore, @preconcurrency HMHomeManagerDele
             return String(describing: left).localizedCaseInsensitiveCompare(String(describing: right)) == .orderedAscending
         }
         return left.name.localizedCaseInsensitiveCompare(right.name) == .orderedAscending
+    }
+}
+
+private extension JSONValue {
+    var approvalDescription: String {
+        switch self {
+        case let .bool(value): return value ? "true" : "false"
+        case let .number(value): return String(value)
+        case let .string(value):
+            let visible = value
+                .replacingOccurrences(of: "\n", with: "↵")
+                .replacingOccurrences(of: "\t", with: "⇥")
+            let prefix = String(visible.prefix(160))
+            return visible.count > prefix.count ? "\"\(prefix)…\"" : "\"\(prefix)\""
+        default: return "an unsupported value"
+        }
     }
 }
 

@@ -147,8 +147,191 @@ final class BridgeServiceTests: XCTestCase {
         ))
     }
 
+    func testApprovalFingerprintsBindOperationPathSceneAndValue() throws {
+        let reference = CharacteristicReference(
+            homeID: TestIDs.home,
+            accessoryID: TestIDs.accessory,
+            serviceID: TestIDs.service,
+            characteristicID: TestIDs.characteristic
+        )
+        let changedPath = CharacteristicReference(
+            homeID: TestIDs.home,
+            accessoryID: TestIDs.accessory,
+            serviceID: TestIDs.service,
+            characteristicID: UUID().uuidString.lowercased()
+        )
+        let original = try ApprovalFingerprint.write(reference: reference, value: .bool(true))
+        XCTAssertNotEqual(
+            original,
+            try ApprovalFingerprint.write(reference: reference, value: .bool(false))
+        )
+        XCTAssertNotEqual(
+            original,
+            try ApprovalFingerprint.write(reference: changedPath, value: .bool(true))
+        )
+        XCTAssertNotEqual(
+            original,
+            ApprovalFingerprint.scene(reference: SceneReference(
+                homeID: TestIDs.home,
+                sceneID: TestIDs.scene
+            ))
+        )
+    }
+
+    func testHighRiskWriteQueuesVisibleRequestAndExactRetryConsumesApproval() async throws {
+        let store = MockHomeStore()
+        store.highRiskCharacteristic = true
+        let gate = ApprovalGate()
+        let service = BridgeService(store: store, token: token, approvalGate: gate)
+        let arguments = writeArguments(value: .bool(true))
+
+        let queued = try decode(await service.handle(line: request(
+            operation: "write_characteristic",
+            arguments: arguments
+        )))
+        XCTAssertEqual(queued.error?.code, "human_approval_required")
+        XCTAssertEqual(gate.pending.count, 1)
+        XCTAssertTrue(gate.pending[0].detail.contains("Test Light"))
+        XCTAssertTrue(store.writes.isEmpty)
+
+        gate.approve(gate.pending[0].id)
+        let approved = try decode(await service.handle(line: request(
+            operation: "write_characteristic",
+            arguments: arguments
+        )))
+        XCTAssertTrue(approved.ok)
+        XCTAssertEqual(store.writes.count, 1)
+        XCTAssertEqual(store.writeApprovalFlags, [true])
+        XCTAssertTrue(gate.pending.isEmpty)
+    }
+
+    func testRejectedWriteRequiresAChangedPendingRequest() async throws {
+        let store = MockHomeStore()
+        store.highRiskCharacteristic = true
+        let gate = ApprovalGate()
+        let service = BridgeService(store: store, token: token, approvalGate: gate)
+        let arguments = writeArguments(value: .bool(true))
+
+        _ = await service.handle(line: request(operation: "write_characteristic", arguments: arguments))
+        let rejectedID = try XCTUnwrap(gate.pending.first?.id)
+        gate.reject(rejectedID)
+        XCTAssertTrue(gate.pending.isEmpty)
+
+        let retry = try decode(await service.handle(line: request(
+            operation: "write_characteristic",
+            arguments: arguments
+        )))
+        XCTAssertEqual(retry.error?.code, "human_approval_required")
+        XCTAssertEqual(gate.pending.count, 1)
+        XCTAssertNotEqual(gate.pending[0].id, rejectedID)
+        XCTAssertTrue(store.writes.isEmpty)
+    }
+
+    func testChangedValueDoesNotConsumeExactGrant() async throws {
+        let store = MockHomeStore()
+        store.highRiskCharacteristic = true
+        let gate = ApprovalGate()
+        let service = BridgeService(store: store, token: token, approvalGate: gate)
+        let original = writeArguments(value: .bool(true))
+
+        _ = await service.handle(line: request(operation: "write_characteristic", arguments: original))
+        gate.approve(try XCTUnwrap(gate.pending.first?.id))
+        let mismatch = try decode(await service.handle(line: request(
+            operation: "write_characteristic",
+            arguments: writeArguments(value: .bool(false))
+        )))
+        XCTAssertEqual(mismatch.error?.code, "human_approval_required")
+        XCTAssertTrue(store.writes.isEmpty)
+
+        let exact = try decode(await service.handle(line: request(
+            operation: "write_characteristic",
+            arguments: original
+        )))
+        XCTAssertTrue(exact.ok)
+        XCTAssertEqual(store.writes.count, 1)
+    }
+
+    func testExpiredGrantFailsClosed() async throws {
+        var current: TimeInterval = 1_000
+        let store = MockHomeStore()
+        store.highRiskCharacteristic = true
+        let gate = ApprovalGate(grantLifetime: 5, monotonicNow: { current })
+        let service = BridgeService(store: store, token: token, approvalGate: gate)
+        let arguments = writeArguments(value: .bool(true))
+
+        _ = await service.handle(line: request(operation: "write_characteristic", arguments: arguments))
+        gate.approve(try XCTUnwrap(gate.pending.first?.id))
+        current += 6
+        let expired = try decode(await service.handle(line: request(
+            operation: "write_characteristic",
+            arguments: arguments
+        )))
+        XCTAssertEqual(expired.error?.code, "human_approval_required")
+        XCTAssertEqual(gate.pending.count, 1)
+        XCTAssertTrue(store.writes.isEmpty)
+    }
+
+    func testApprovalIsOneUseAndReplayFailsClosed() async throws {
+        let store = MockHomeStore()
+        store.highRiskCharacteristic = true
+        let gate = ApprovalGate()
+        let service = BridgeService(store: store, token: token, approvalGate: gate)
+        let arguments = writeArguments(value: .bool(true))
+
+        _ = await service.handle(line: request(operation: "write_characteristic", arguments: arguments))
+        gate.approve(try XCTUnwrap(gate.pending.first?.id))
+        let approved = try decode(await service.handle(line: request(
+            operation: "write_characteristic",
+            arguments: arguments
+        )))
+        XCTAssertTrue(approved.ok)
+        let replay = try decode(await service.handle(line: request(
+            operation: "write_characteristic",
+            arguments: arguments
+        )))
+        XCTAssertEqual(replay.error?.code, "human_approval_required")
+        XCTAssertEqual(store.writes.count, 1)
+        XCTAssertEqual(gate.pending.count, 1)
+    }
+
+    func testHighRiskSceneQueuesAndConsumesExactApproval() async throws {
+        let store = MockHomeStore()
+        store.highRiskScene = true
+        let gate = ApprovalGate()
+        let service = BridgeService(store: store, token: token, approvalGate: gate)
+        let arguments: [String: JSONValue] = [
+            "home_id": .string(TestIDs.home),
+            "scene_id": .string(TestIDs.scene),
+            "confirm": .bool(true),
+        ]
+
+        let queued = try decode(await service.handle(line: request(
+            operation: "run_scene",
+            arguments: arguments
+        )))
+        XCTAssertEqual(queued.error?.code, "human_approval_required")
+        XCTAssertEqual(gate.pending.count, 1)
+        XCTAssertTrue(gate.pending[0].detail.contains("Test Scene"))
+        gate.approve(gate.pending[0].id)
+
+        let approved = try decode(await service.handle(line: request(
+            operation: "run_scene",
+            arguments: arguments
+        )))
+        XCTAssertTrue(approved.ok)
+        XCTAssertEqual(store.executedScenes.count, 1)
+        XCTAssertEqual(store.sceneApprovalFlags, [true])
+    }
+
     private func service() -> BridgeService {
         BridgeService(store: MockHomeStore(), token: token)
+    }
+
+    private func writeArguments(value: JSONValue) -> [String: JSONValue] {
+        var arguments = TestIDs.characteristicArguments
+        arguments["value"] = value
+        arguments["confirm"] = .bool(true)
+        return arguments
     }
 
     private func request(

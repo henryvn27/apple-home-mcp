@@ -12,6 +12,8 @@ final class MockHomeStore: HomeStore {
     var readCount = 0
     var writes: [(CharacteristicReference, JSONValue)] = []
     var executedScenes: [SceneReference] = []
+    var writeApprovalFlags: [Bool] = []
+    var sceneApprovalFlags: [Bool] = []
 
     func inventory() throws -> [HomeRecord] { homes }
 
@@ -20,21 +22,42 @@ final class MockHomeStore: HomeStore {
         return readValue
     }
 
-    func write(_ reference: CharacteristicReference, value: JSONValue) async throws {
+    func writeApproval(
+        _ reference: CharacteristicReference,
+        value: JSONValue
+    ) throws -> ApprovalPresentation? {
+        highRiskCharacteristic
+            ? ApprovalPresentation(title: "Approve Home control", detail: "Set Test Light to \(value).")
+            : nil
+    }
+
+    func write(
+        _ reference: CharacteristicReference,
+        value: JSONValue,
+        humanApprovalGranted: Bool
+    ) async throws {
+        if highRiskCharacteristic, !humanApprovalGranted {
+            throw BridgeError("human_approval_required", "approval was not granted")
+        }
+        writeApprovalFlags.append(humanApprovalGranted)
         writes.append((reference, value))
     }
 
     func scenes() throws -> [SceneRecord] { sceneRecords }
 
-    func runScene(_ reference: SceneReference) async throws {
+    func sceneApproval(_ reference: SceneReference) throws -> ApprovalPresentation? {
+        highRiskScene
+            ? ApprovalPresentation(title: "Approve Home scene", detail: "Run Test Scene.")
+            : nil
+    }
+
+    func runScene(_ reference: SceneReference, humanApprovalGranted: Bool) async throws {
+        if highRiskScene, !humanApprovalGranted {
+            throw BridgeError("human_approval_required", "approval was not granted")
+        }
+        sceneApprovalFlags.append(humanApprovalGranted)
         executedScenes.append(reference)
     }
-
-    func characteristicRequiresHumanApproval(_ reference: CharacteristicReference) throws -> Bool {
-        highRiskCharacteristic
-    }
-
-    func sceneRequiresHumanApproval(_ reference: SceneReference) throws -> Bool { highRiskScene }
 }
 
 enum TestIDs {

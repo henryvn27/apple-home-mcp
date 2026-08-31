@@ -7,18 +7,24 @@ final class BridgeAppModel: ObservableObject {
     @Published private(set) var descriptor: BridgeDescriptor?
     @Published private(set) var status = StoreStatus(loaded: false, authorizationStatus: "not_determined", homeCount: 0)
     @Published private(set) var errorMessage: String?
+    @Published private(set) var pendingApprovals: [PendingApproval] = []
 
+    private let approvalGate = ApprovalGate()
     private var server: LoopbackBridgeServer?
     private var storeObservation: AnyCancellable?
+    private var approvalObservation: AnyCancellable?
 
     init() {
         storeObservation = store.objectWillChange.sink { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
+        approvalObservation = approvalGate.$pending.sink { [weak self] pending in
+            self?.pendingApprovals = pending
+        }
         do {
 #if targetEnvironment(macCatalyst)
             let token = try BridgeSecret.loadOrCreate()
-            let service = BridgeService(store: store, token: token)
+            let service = BridgeService(store: store, token: token, approvalGate: approvalGate)
             let server = LoopbackBridgeServer(service: service, token: token)
             descriptor = try server.start()
             self.server = server
@@ -33,6 +39,14 @@ final class BridgeAppModel: ObservableObject {
 
     func refresh() {
         status = store.status
+    }
+
+    func approve(_ request: PendingApproval) {
+        approvalGate.approve(request.id)
+    }
+
+    func reject(_ request: PendingApproval) {
+        approvalGate.reject(request.id)
     }
 }
 
@@ -61,9 +75,29 @@ struct ContentView: View {
                 Section("Safety") {
                     Label("Every write and scene requires confirm=true.", systemImage: "checkmark.shield")
                     Label(
-                        "Locks, garage doors, security, cameras, alarms, access control, and emergency services fail closed.",
+                        "High-risk controls require a short-lived, exact, one-use approval here.",
                         systemImage: "lock.shield"
                     )
+                }
+                if !model.pendingApprovals.isEmpty {
+                    Section("Pending approval") {
+                        ForEach(model.pendingApprovals) { request in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(request.title).font(.headline)
+                                Text(request.detail)
+                                Text("Approval permits one identical retry for 60 seconds.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                HStack {
+                                    Button("Reject", role: .destructive) { model.reject(request) }
+                                    Spacer()
+                                    Button("Approve") { model.approve(request) }
+                                        .buttonStyle(.borderedProminent)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
                 }
                 if let error = model.errorMessage {
                     Section("Bridge error") { Text(error).foregroundStyle(.red) }

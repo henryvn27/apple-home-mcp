@@ -219,7 +219,23 @@ final class LoopbackBridgeServer {
 
     private nonisolated static func handle(client: Int32, service: BridgeService) {
         var timeout = timeval(tv_sec: 15, tv_usec: 0)
-        _ = setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout.size(ofValue: timeout)))
+        guard setsockopt(
+            client,
+            SOL_SOCKET,
+            SO_RCVTIMEO,
+            &timeout,
+            socklen_t(MemoryLayout.size(ofValue: timeout))
+        ) == 0,
+        setsockopt(
+            client,
+            SOL_SOCKET,
+            SO_SNDTIMEO,
+            &timeout,
+            socklen_t(MemoryLayout.size(ofValue: timeout))
+        ) == 0 else {
+            Darwin.close(client)
+            return
+        }
         var noPipe: Int32 = 1
         _ = setsockopt(client, SOL_SOCKET, SO_NOSIGPIPE, &noPipe, socklen_t(MemoryLayout.size(ofValue: noPipe)))
 

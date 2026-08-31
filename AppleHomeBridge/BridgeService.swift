@@ -7,10 +7,12 @@ final class BridgeService {
 
     private let store: HomeStore
     private let token: String
+    private let approvalGate: ApprovalGate
 
-    init(store: HomeStore, token: String) {
+    init(store: HomeStore, token: String, approvalGate: ApprovalGate? = nil) {
         self.store = store
         self.token = token
+        self.approvalGate = approvalGate ?? ApprovalGate()
     }
 
     func handle(line: Data) async -> Data {
@@ -74,13 +76,39 @@ final class BridgeService {
         case "write_characteristic":
             let reference = try characteristicReference(request.arguments, includesValue: true)
             try requireConfirmation(request.arguments)
-            if try store.characteristicRequiresHumanApproval(reference) {
-                throw BridgeError("human_approval_required", "this high-risk Home control must be approved in the app")
-            }
             guard let value = request.arguments["value"] else {
                 throw BridgeError("invalid_arguments", "value is required")
             }
-            try await store.write(reference, value: value)
+            let fingerprint = try ApprovalFingerprint.write(reference: reference, value: value)
+            let presentation = try store.writeApproval(reference, value: value)
+            let humanApprovalGranted: Bool
+            if let presentation {
+                let decision = approvalGate.authorizeOrQueue(
+                    fingerprint: fingerprint,
+                    presentation: presentation
+                )
+                switch decision {
+                case .authorized:
+                    humanApprovalGranted = true
+                case .pending:
+                    throw BridgeError(
+                        "human_approval_required",
+                        "this exact high-risk Home control is pending approval in the app"
+                    )
+                case .queueFull:
+                    throw BridgeError(
+                        "human_approval_required",
+                        "the in-app approval queue is full; reject pending requests before retrying"
+                    )
+                }
+            } else {
+                humanApprovalGranted = false
+            }
+            try await store.write(
+                reference,
+                value: value,
+                humanApprovalGranted: humanApprovalGranted
+            )
             return .object(["written": .bool(true)])
         case "list_scenes":
             let unknown = Set(request.arguments.keys).subtracting(["home_id"])
@@ -95,10 +123,32 @@ final class BridgeService {
                 homeID: try requiredUUID(request.arguments["home_id"], name: "home_id"),
                 sceneID: try requiredUUID(request.arguments["scene_id"], name: "scene_id")
             )
-            if try store.sceneRequiresHumanApproval(reference) {
-                throw BridgeError("human_approval_required", "this high-risk scene must be approved in the app")
+            let fingerprint = ApprovalFingerprint.scene(reference: reference)
+            let presentation = try store.sceneApproval(reference)
+            let humanApprovalGranted: Bool
+            if let presentation {
+                let decision = approvalGate.authorizeOrQueue(
+                    fingerprint: fingerprint,
+                    presentation: presentation
+                )
+                switch decision {
+                case .authorized:
+                    humanApprovalGranted = true
+                case .pending:
+                    throw BridgeError(
+                        "human_approval_required",
+                        "this exact high-risk scene is pending approval in the app"
+                    )
+                case .queueFull:
+                    throw BridgeError(
+                        "human_approval_required",
+                        "the in-app approval queue is full; reject pending requests before retrying"
+                    )
+                }
+            } else {
+                humanApprovalGranted = false
             }
-            try await store.runScene(reference)
+            try await store.runScene(reference, humanApprovalGranted: humanApprovalGranted)
             return .object(["executed": .bool(true)])
         default:
             throw BridgeError("unsupported_operation", "operation is not supported")
