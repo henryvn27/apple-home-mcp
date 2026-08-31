@@ -1,0 +1,20 @@
+{
+  "name": "apple-home-mcp",
+  "interface": {
+    "displayName": "Apple Home MCP"
+  },
+  "plugins": [
+    {
+      "name": "apple-home",
+      "source": {
+        "source": "local",
+        "path": "./plugins/apple-home"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

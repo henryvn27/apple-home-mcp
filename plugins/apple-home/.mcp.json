@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "apple-home": {
+      "command": "/usr/bin/python3",
+      "args": ["server.py"],
+      "cwd": "."
+    }
+  }
+}

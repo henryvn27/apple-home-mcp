@@ -1,0 +1,37 @@
+{
+  "name": "apple-home",
+  "version": "0.1.0",
+  "description": "Read and control curated Apple Home Shortcuts from Codex or ChatGPT",
+  "author": {
+    "name": "Henry Van Ness"
+  },
+  "license": "MIT",
+  "keywords": [
+    "apple home",
+    "homekit",
+    "shortcuts",
+    "mcp",
+    "codex",
+    "chatgpt",
+    "macos",
+    "smart home"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Apple Home",
+    "shortDescription": "Ask your home. Make it happen.",
+    "longDescription": "Apple Home lets Codex and ChatGPT discover explicitly curated Home shortcuts, read the states they return, run exact device actions, and execute scenes. Everything stays local through Apple's Shortcuts command-line tool; physical controls require explicit confirmation.",
+    "developerName": "Henry Van Ness",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "What Home actions can you access?",
+      "Read the living room temperature.",
+      "Run my Good Night scene."
+    ],
+    "brandColor": "#F28C28"
+  }
+}

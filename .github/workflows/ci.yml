@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JSON metadata
+        run: |
+          python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
+          python3 -m json.tool plugins/apple-home/.codex-plugin/plugin.json >/dev/null
+          python3 -m json.tool plugins/apple-home/.mcp.json >/dev/null
+      - name: Test MCP server
+        run: python3 -m unittest discover -s plugins/apple-home/tests -v
+      - name: Compile server
+        run: python3 -m py_compile plugins/apple-home/server.py
