@@ -84,6 +84,12 @@ on loopback.
 3. Run the **My Mac (Mac Catalyst)** destination and grant Home access.
 4. Keep Apple Home Bridge running while an agent uses the direct tools.
 
+For a high-risk control, the first confirmed tool call does not execute it. The
+companion shows the exact target and value under **Pending approval**. Choose
+**Approve** or **Reject** in the app. Approval permits one identical retry for
+60 seconds; it does not run the action by itself. A changed, expired, or replayed
+request fails closed and needs a new approval.
+
 The same target runs on iPhone and iPad for permission and UI testing, but an
 MCP server on a Mac connects to the Mac Catalyst build. The bridge token never
 leaves the Mac.
@@ -128,9 +134,9 @@ Run my Good Night scene.
 | `get_home_bridge_status` | Checks direct HomeKit and Shortcuts availability | Read-only; runs nothing |
 | `list_home_inventory` | Lists homes, rooms, zones, accessories, services, characteristics, properties, and metadata | Read-only; sensitive Home data |
 | `read_home_characteristic` | Refreshes one exact readable characteristic | Read-only; stable UUID path |
-| `write_home_characteristic` | Writes one exact characteristic after metadata validation | Explicit confirmation; in-app gate for high-risk services |
+| `write_home_characteristic` | Writes one exact characteristic after metadata validation | Explicit confirmation; exact one-use in-app approval for high-risk services |
 | `list_homekit_scenes` | Lists HomeKit action sets and scenes | Read-only |
-| `run_homekit_scene` | Runs one exact HomeKit scene | Explicit confirmation; in-app gate when required |
+| `run_homekit_scene` | Runs one exact HomeKit scene | Explicit confirmation; exact one-use in-app approval when required |
 | `list_home_actions` | Lists curated reads, controls, and scenes | Read-only; exact folder |
 | `read_home_state` | Runs one `Read - ` shortcut and returns text/JSON | Read-only contract |
 | `run_home_action` | Runs one `Control - ` shortcut | Explicit confirmation; physical effect |
@@ -143,8 +149,10 @@ and removes optional input files immediately.
 Controls and scenes are marked destructive because they affect the physical
 world. In direct mode, locks, garage doors, security systems, alarms, cameras,
 access control, emergency functions, and equivalent services require in-app
-human approval or fail closed. Do not place those controls in the Shortcuts
-fallback; it cannot add the same approval gate.
+human approval. That approval is bound to the operation, full HomeKit UUID path
+or scene, and exact scalar value; it expires after 60 seconds and is consumed
+before the mutation. Do not place those controls in the Shortcuts fallback; it
+cannot add the same approval gate.
 
 Use another folder by setting `APPLE_HOME_MCP_FOLDER` in the MCP environment.
 
@@ -191,11 +199,17 @@ API key or tunnel profile.
 cd apple-home-mcp
 /usr/bin/python3 -m unittest discover -s plugins/apple-home/tests -v
 /usr/bin/python3 -m py_compile plugins/apple-home/server.py plugins/apple-home/companion.py
+xcodebuild test \
+  -project AppleHomeBridge.xcodeproj \
+  -scheme AppleHomeBridge \
+  -destination 'platform=macOS,variant=Mac Catalyst' \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
 ```
 
 Automated Python tests mock the companion socket and `/usr/bin/shortcuts`.
 Swift tests use a mock Home graph. They never inspect Henry's Home or control a
-real accessory.
+real accessory. GitHub Actions also builds and tests the app against an exact
+iOS Simulator destination.
 
 ## Security
 

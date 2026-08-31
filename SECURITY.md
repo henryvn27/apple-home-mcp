@@ -27,8 +27,12 @@ the user requests the physical action.
 
 Confirmation does not bypass companion policy. Locks, garage doors, security
 systems, alarms, access control, cameras, emergency functions, and equivalent
-high-consequence services require an in-app human approval gate or fail
-closed. Do not use this project for emergency or life-safety automation.
+high-consequence services require an in-app human approval gate. The app shows
+the exact target and value. An approval grants one identical retry for 60
+seconds and is fingerprinted to the operation, full UUID path or scene, and
+exact scalar value. It is consumed before mutation. Rejection, changed input,
+expiry, replay, queue overflow, or app restart fails closed. Do not use this
+project for emergency or life-safety automation.
 
 The bridge does not use private HomeKit APIs, scrape Home data, or call private
 iCloud endpoints. It cannot reproduce Siri behavior that Apple does not expose

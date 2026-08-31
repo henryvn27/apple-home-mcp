@@ -64,8 +64,18 @@ metadata.
 Writes and scenes require `confirm: true`. This confirms the agent call; it
 does not bypass companion policy. Locks, garage doors, security systems,
 cameras, alarms, access control, emergency functions, and equivalent
-high-consequence services require an in-app human approval gate or fail
-closed.
+high-consequence services use an in-app human approval gate:
+
+1. The first request is queued, returns `human_approval_required`, and displays
+   its exact target and action in the companion.
+2. The user approves or rejects it in the companion.
+3. Approval permits one identical retry within 60 seconds. The grant is bound
+   to the operation, full UUID path or scene, and exact scalar value.
+4. The grant is consumed before mutation. Changed, expired, replayed, rejected,
+   queue-overflowed, or post-restart requests fail closed.
+
+The Home graph, writable/readable properties, safety classification, and value
+metadata are resolved and validated again immediately before mutation.
 
 The bridge covers controls available through Apple's public HomeKit APIs. It
 does not emulate private Siri services, scrape Home data, or call private

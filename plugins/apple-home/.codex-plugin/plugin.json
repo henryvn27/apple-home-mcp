@@ -6,7 +6,7 @@
     "name": "Henry Van Ness"
   },
   "license": "MIT",
-    "keywords": [
+  "keywords": [
     "apple home",
     "homekit",
     "shortcuts",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Apple Home",
     "shortDescription": "Ask your home. Make it happen.",
-    "longDescription": "Apple Home lets Codex and ChatGPT inspect the Home graph, read public HomeKit characteristics, write metadata-validated values, and run scenes through a local iPhone, iPad, or Mac Catalyst companion. Curated Apple Shortcuts remain available as a fallback. Physical controls require explicit confirmation, and high-risk services require in-app approval or fail closed.",
+    "longDescription": "Apple Home lets Codex and ChatGPT inspect the Home graph, read public HomeKit characteristics, write metadata-validated values, and run scenes through a local iPhone, iPad, or Mac Catalyst companion. Curated Apple Shortcuts remain available as a fallback. Physical controls require explicit confirmation, and high-risk services require exact one-use in-app approval.",
     "developerName": "Henry Van Ness",
     "category": "Productivity",
     "capabilities": [
