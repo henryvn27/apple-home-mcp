@@ -327,21 +327,38 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(result["ignored_shortcuts"], 1)
 
     def test_direct_homekit_calls_use_the_companion_contract(self):
-        payload = server.normalize_arguments(
-            "read_home_characteristic",
-            {
-                "home_id": UUIDS["folder"],
-                "accessory_id": UUIDS["read"],
-                "service_id": UUIDS["control"],
-                "characteristic_id": UUIDS["scene"],
-            },
-        )
-        with mock.patch.object(
-            server.companion, "call", return_value={"value": 72}
-        ) as call:
-            result = server.invoke_home(payload)
-        self.assertEqual(result, {"value": 72})
-        call.assert_called_once_with("read_characteristic", payload["companion_arguments"])
+        target = {
+            "home_id": UUIDS["folder"],
+            "accessory_id": UUIDS["read"],
+            "service_id": UUIDS["control"],
+            "characteristic_id": UUIDS["scene"],
+        }
+        cases = [
+            ("read_home_characteristic", target, "read_characteristic"),
+            (
+                "write_home_characteristic",
+                {**target, "value": 72, "confirm": True},
+                "write_characteristic",
+            ),
+            (
+                "run_homekit_scene",
+                {
+                    "home_id": UUIDS["folder"],
+                    "scene_id": UUIDS["scene"],
+                    "confirm": True,
+                },
+                "run_scene",
+            ),
+        ]
+        for name, arguments, operation in cases:
+            with self.subTest(name=name):
+                payload = server.normalize_arguments(name, arguments)
+                with mock.patch.object(
+                    server.companion, "call", return_value={"ok": name}
+                ) as call:
+                    result = server.invoke_home(payload)
+                self.assertEqual(result, {"ok": name})
+                call.assert_called_once_with(operation, payload["companion_arguments"])
 
     def test_bridge_status_prefers_homekit_and_preserves_shortcuts(self):
         shortcuts = {
