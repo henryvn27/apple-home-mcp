@@ -20,4 +20,4 @@ jobs:
       - name: Test MCP server
         run: python3 -m unittest discover -s plugins/apple-home/tests -v
       - name: Compile server
-        run: python3 -m py_compile plugins/apple-home/server.py
+        run: python3 -m py_compile plugins/apple-home/server.py plugins/apple-home/companion.py
