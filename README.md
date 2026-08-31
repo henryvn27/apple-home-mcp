@@ -9,28 +9,32 @@
 <p align="center">
   <a href="https://github.com/henryvn27/apple-home-mcp/actions/workflows/ci.yml"><img src="https://github.com/henryvn27/apple-home-mcp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-1a1a1a.svg" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/macOS-Shortcuts-f28c28.svg" alt="Apple Shortcuts">
+  <img src="https://img.shields.io/badge/HomeKit-iOS%20%2B%20Mac%20Catalyst-f28c28.svg" alt="HomeKit on iOS and Mac Catalyst">
+  <img src="https://img.shields.io/badge/fallback-Apple%20Shortcuts-555.svg" alt="Apple Shortcuts fallback">
   <img src="https://img.shields.io/badge/dependencies-0-f4eee3.svg" alt="Zero dependencies">
 </p>
 
-A tiny, local-first MCP plugin that lets Codex or ChatGPT read and run the
-Apple Home automations you explicitly place in one Shortcuts folder.
+A local MCP plugin that lets Codex or ChatGPT inspect Apple Home, read live
+state, write public HomeKit characteristics, and run scenes. A universal Apple
+companion provides direct HomeKit access on iPhone, iPad, and Mac Catalyst. The
+curated Shortcuts bridge remains available as a fallback.
 
 ```text
-You: What Home actions can you access?
-AI: I can read the living-room temperature, control the desk lamp,
-    and run your Good Night scene.
+You: What can you control in the office?
+AI: The desk lamp exposes power, brightness, hue, and saturation.
 
-You: What's the living-room temperature?
-AI: 72°F.
+You: Set it to a warm orange at 35 percent.
+AI: Set the desk lamp brightness, hue, and saturation.
 
-You: Turn off the desk lamp.
-AI: Ran “Desk Lamp”.
+You: Run Good Night.
+AI: Ran the Good Night scene.
 ```
 
-No cloud service, Home Assistant instance, private iCloud endpoint, or Home.app
-screen scraping. You choose the exact capabilities. The MCP can do nothing
-outside that allowlist.
+No cloud relay, Home Assistant instance, private iCloud endpoint, or Home.app
+screen scraping. Direct mode uses Apple's public HomeKit APIs. It can reach the
+characteristics HomeKit marks readable or writable, including granular values
+such as brightness, color, fan speed, position, and thermostat targets when an
+accessory exposes them. Private Siri services are not emulated.
 
 ## Install in Codex
 
@@ -38,6 +42,9 @@ outside that allowlist.
 codex plugin marketplace add henryvn27/apple-home-mcp
 codex plugin add apple-home@apple-home-mcp
 ```
+
+This installs the MCP plugin. Direct HomeKit access also needs the Apple Home
+Bridge companion described below; the Shortcuts fallback does not.
 
 ### Let an agent install it
 
@@ -55,19 +62,37 @@ Otherwise, run:
 codex plugin marketplace add henryvn27/apple-home-mcp
 codex plugin add apple-home@apple-home-mcp
 
-Verify that apple-home@apple-home-mcp is installed and enabled. Then tell me to
-create a Shortcuts folder named Apple Home MCP and start a new Codex task so the
-plugin loads. Do not create or run Home shortcuts without asking me first.
+Verify that apple-home@apple-home-mcp is installed and enabled. Tell me to start
+a new Codex task so the plugin loads. For direct HomeKit access, point me to the
+Apple Home Bridge setup in the repository and explain that I must choose a
+development team and grant Home access myself. If I prefer the Shortcuts
+fallback, tell me how to create the Apple Home MCP folder. Do not inspect Home
+data, create shortcuts, or run a physical action during installation.
 ```
 
 Start a new Codex task after installation.
 
-## Two-minute Home setup
+## Direct HomeKit setup
 
-Apple protects HomeKit behind an entitlement that is
-[not available to macOS apps](https://developer.apple.com/documentation/xcode/configuring-homekit-access).
-The supported Mac bridge is Apple Shortcuts, which Apple exposes through its
-[built-in command-line tool](https://support.apple.com/guide/shortcuts-mac/apd455c82f02/mac).
+Apple exposes HomeKit to iPhone and iPad apps and to Mac apps built with
+[Mac Catalyst](https://developer.apple.com/forums/thread/822517). The Mac
+Catalyst build is the local bridge for Codex because the MCP connection stays
+on loopback.
+
+1. Open the Apple Home Bridge Xcode project included in this repository.
+2. Select your Apple development team for the app target.
+3. Run the **My Mac (Mac Catalyst)** destination and grant Home access.
+4. Keep Apple Home Bridge running while an agent uses the direct tools.
+
+The same target runs on iPhone and iPad for permission and UI testing, but an
+MCP server on a Mac connects to the Mac Catalyst build. The bridge token never
+leaves the Mac.
+
+## Shortcuts fallback
+
+The fallback uses Apple's
+[built-in Shortcuts command-line tool](https://support.apple.com/guide/shortcuts-mac/apd455c82f02/mac)
+and does not require the companion.
 
 1. Open **Shortcuts** and create a folder named **Apple Home MCP**.
 2. Add only the Home capabilities you want AI to access.
@@ -96,11 +121,16 @@ Turn on the desk lamp.
 Run my Good Night scene.
 ```
 
-## What it can do
+## Tools
 
 | Tool | What it does | Safety |
 | --- | --- | --- |
-| `get_home_bridge_status` | Checks folder availability and action counts | Read-only; runs nothing |
+| `get_home_bridge_status` | Checks direct HomeKit and Shortcuts availability | Read-only; runs nothing |
+| `list_home_inventory` | Lists homes, rooms, zones, accessories, services, characteristics, properties, and metadata | Read-only; sensitive Home data |
+| `read_home_characteristic` | Refreshes one exact readable characteristic | Read-only; stable UUID path |
+| `write_home_characteristic` | Writes one exact characteristic after metadata validation | Explicit confirmation; in-app gate for high-risk services |
+| `list_homekit_scenes` | Lists HomeKit action sets and scenes | Read-only |
+| `run_homekit_scene` | Runs one exact HomeKit scene | Explicit confirmation; in-app gate when required |
 | `list_home_actions` | Lists curated reads, controls, and scenes | Read-only; exact folder |
 | `read_home_state` | Runs one `Read - ` shortcut and returns text/JSON | Read-only contract |
 | `run_home_action` | Runs one `Control - ` shortcut | Explicit confirmation; physical effect |
@@ -111,9 +141,10 @@ duplicates, uses fixed process arguments with no shell, limits output to 1 MiB,
 and removes optional input files immediately.
 
 Controls and scenes are marked destructive because they affect the physical
-world. Do not put locks, garage doors, alarms, cameras, security systems, or
-emergency routines in the folder. The plugin cannot inspect a shortcut's steps;
-the folder is your security boundary.
+world. In direct mode, locks, garage doors, security systems, alarms, cameras,
+access control, emergency functions, and equivalent services require in-app
+human approval or fail closed. Do not place those controls in the Shortcuts
+fallback; it cannot add the same approval gate.
 
 Use another folder by setting `APPLE_HOME_MCP_FOLDER` in the MCP environment.
 
@@ -121,17 +152,17 @@ Use another folder by setting `APPLE_HOME_MCP_FOLDER` in the MCP environment.
 
 ```mermaid
 flowchart LR
-    A[Codex or ChatGPT] --> B[5 focused MCP tools]
+    A[Codex or ChatGPT] --> B[Apple Home MCP]
     B --> C[Strict Python validation]
-    C --> D[Exact curated shortcut UUID]
-    D --> E[Apple Shortcuts]
-    E --> F[Apple Home action or state]
-    F -->|local text or JSON| A
+    C --> D[Authenticated loopback bridge]
+    D --> E[Mac Catalyst companion]
+    E --> F[Public HomeKit APIs]
+    C -. fallback .-> G[Curated Apple Shortcuts]
 ```
 
-Apple Home MCP does not claim direct HomeKit database access. Apple documents
-that HomeKit requires entitlement and user consent and that the capability is
-unavailable for macOS. This project stays inside the public Shortcuts boundary.
+The companion uses HomeKit's public homes, accessories, services,
+characteristics, metadata, and action sets. It does not read the private Home
+database or promise Siri behavior Apple keeps outside the public framework.
 
 ## ChatGPT
 
@@ -159,11 +190,12 @@ API key or tunnel profile.
 ```bash
 cd apple-home-mcp
 /usr/bin/python3 -m unittest discover -s plugins/apple-home/tests -v
-/usr/bin/python3 -m py_compile plugins/apple-home/server.py
+/usr/bin/python3 -m py_compile plugins/apple-home/server.py plugins/apple-home/companion.py
 ```
 
-Automated tests mock `/usr/bin/shortcuts`; they never inspect or run your real
-shortcuts and never control Home accessories.
+Automated Python tests mock the companion socket and `/usr/bin/shortcuts`.
+Swift tests use a mock Home graph. They never inspect Henry's Home or control a
+real accessory.
 
 ## Security
 
