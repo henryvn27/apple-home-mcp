@@ -95,6 +95,22 @@ class CompanionTests(unittest.TestCase):
                 with self.assertRaisesRegex(companion.CompanionError, "not running"):
                     companion._descriptor()
 
+    def test_descriptor_rejects_invalid_schema_port_and_token(self):
+        with tempfile.TemporaryDirectory() as root:
+            for overrides, message in (
+                ({"schemaVersion": 2}, "unsupported schema"),
+                ({"port": 0}, "invalid port"),
+                ({"port": True}, "invalid port"),
+                ({"token": "short"}, "invalid token"),
+            ):
+                path = self.descriptor(root, **overrides)
+                with self.subTest(overrides=overrides):
+                    with mock.patch.dict(
+                        os.environ, {"APPLE_HOME_COMPANION_DESCRIPTOR": str(path)}
+                    ):
+                        with self.assertRaisesRegex(companion.CompanionError, message):
+                            companion._descriptor()
+
     def test_call_sends_authenticated_request_and_returns_result(self):
         connection = FakeConnection(b'{"ok":true,"result":{"homes":[]}}\n')
         with mock.patch.object(
@@ -151,6 +167,27 @@ class CompanionTests(unittest.TestCase):
                     companion.call("status")
         with self.assertRaisesRegex(companion.CompanionError, "unsupported"):
             companion.call("delete_home")
+
+    def test_call_rejects_invalid_json_oversized_frames_and_timeouts(self):
+        with mock.patch.object(
+            companion, "_descriptor", return_value=("127.0.0.1", 49152, "secret" * 8)
+        ):
+            for response, message in (
+                (b"not-json\n", "invalid JSON"),
+                (b"x" * (companion.MAX_MESSAGE_BYTES + 1), "exceeded 1 MiB"),
+                (b'{"result":{}}\n', "response envelope"),
+            ):
+                with self.subTest(message=message):
+                    connection = FakeConnection(response)
+                    with mock.patch.object(
+                        companion.socket, "create_connection", return_value=connection
+                    ):
+                        with self.assertRaisesRegex(companion.CompanionError, message):
+                            companion.call("status")
+        for timeout in (0, -1, 301, float("nan"), True, "15"):
+            with self.subTest(timeout=timeout):
+                with self.assertRaises(companion.CompanionError):
+                    companion.call("status", timeout=timeout)
 
 
 if __name__ == "__main__":
