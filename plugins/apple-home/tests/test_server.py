@@ -59,11 +59,16 @@ class ServerTests(unittest.TestCase):
             check=True,
         )
         responses = [json.loads(line) for line in process.stdout.splitlines()]
-        self.assertEqual(responses[0]["result"]["serverInfo"]["version"], "0.1.0")
+        self.assertEqual(responses[0]["result"]["serverInfo"]["version"], "0.2.0")
         self.assertEqual(
             [tool["name"] for tool in responses[1]["result"]["tools"]],
             [
                 "get_home_bridge_status",
+                "list_home_inventory",
+                "read_home_characteristic",
+                "write_home_characteristic",
+                "list_homekit_scenes",
+                "run_homekit_scene",
                 "list_home_actions",
                 "read_home_state",
                 "run_home_action",
@@ -75,13 +80,21 @@ class ServerTests(unittest.TestCase):
         annotations = {tool["name"]: tool["annotations"] for tool in server.TOOLS}
         for name in (
             "get_home_bridge_status",
+            "list_home_inventory",
+            "read_home_characteristic",
+            "list_homekit_scenes",
             "list_home_actions",
             "read_home_state",
         ):
             self.assertTrue(annotations[name]["readOnlyHint"])
             self.assertFalse(annotations[name]["destructiveHint"])
             self.assertTrue(annotations[name]["idempotentHint"])
-        for name in ("run_home_action", "run_home_scene"):
+        for name in (
+            "write_home_characteristic",
+            "run_homekit_scene",
+            "run_home_action",
+            "run_home_scene",
+        ):
             self.assertFalse(annotations[name]["readOnlyHint"])
             self.assertTrue(annotations[name]["destructiveHint"])
             self.assertFalse(annotations[name]["idempotentHint"])
@@ -111,10 +124,82 @@ class ServerTests(unittest.TestCase):
         )
         self.assertEqual(scene["kind"], "scene")
 
+    def test_normalizes_direct_homekit_operations(self):
+        read = server.normalize_arguments(
+            "read_home_characteristic",
+            {
+                "home_id": UUIDS["folder"].upper(),
+                "accessory_id": UUIDS["read"],
+                "service_id": UUIDS["control"],
+                "characteristic_id": UUIDS["scene"],
+            },
+        )
+        self.assertEqual(read["companion_operation"], "read_characteristic")
+        self.assertEqual(
+            read["companion_arguments"]["home_id"], UUIDS["folder"].lower()
+        )
+        write = server.normalize_arguments(
+            "write_home_characteristic",
+            {
+                "home_id": UUIDS["folder"],
+                "accessory_id": UUIDS["read"],
+                "service_id": UUIDS["control"],
+                "characteristic_id": UUIDS["scene"],
+                "value": 42.5,
+                "confirm": True,
+            },
+        )
+        self.assertEqual(write["companion_operation"], "write_characteristic")
+        self.assertEqual(write["companion_arguments"]["value"], 42.5)
+        scene = server.normalize_arguments(
+            "run_homekit_scene",
+            {
+                "home_id": UUIDS["folder"],
+                "scene_id": UUIDS["scene"],
+                "confirm": True,
+            },
+        )
+        self.assertEqual(scene["companion_operation"], "run_scene")
+        with self.assertRaisesRegex(server.UserError, "HomeKit UUID"):
+            server.normalize_arguments(
+                "list_homekit_scenes", {"home_id": "not-a-uuid"}
+            )
+        with self.assertRaisesRegex(server.UserError, "finite"):
+            server.normalize_arguments(
+                "write_home_characteristic",
+                {
+                    "home_id": UUIDS["folder"],
+                    "accessory_id": UUIDS["read"],
+                    "service_id": UUIDS["control"],
+                    "characteristic_id": UUIDS["scene"],
+                    "value": float("nan"),
+                    "confirm": True,
+                },
+            )
+
     def test_controls_require_explicit_confirmation(self):
-        for name in ("run_home_action", "run_home_scene"):
+        for name in (
+            "write_home_characteristic",
+            "run_homekit_scene",
+            "run_home_action",
+            "run_home_scene",
+        ):
             for value in (None, False, "yes", 1):
-                arguments = {"name": "Example"}
+                if name == "write_home_characteristic":
+                    arguments = {
+                        "home_id": UUIDS["folder"],
+                        "accessory_id": UUIDS["read"],
+                        "service_id": UUIDS["control"],
+                        "characteristic_id": UUIDS["scene"],
+                        "value": True,
+                    }
+                elif name == "run_homekit_scene":
+                    arguments = {
+                        "home_id": UUIDS["folder"],
+                        "scene_id": UUIDS["scene"],
+                    }
+                else:
+                    arguments = {"name": "Example"}
                 if value is not None:
                     arguments["confirm"] = value
                 with self.subTest(name=name, value=value):
@@ -240,6 +325,60 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(result["reads"][0]["name"], "Living Room Temperature")
         self.assertNotIn("identifier", result["reads"][0])
         self.assertEqual(result["ignored_shortcuts"], 1)
+
+    def test_direct_homekit_calls_use_the_companion_contract(self):
+        target = {
+            "home_id": UUIDS["folder"],
+            "accessory_id": UUIDS["read"],
+            "service_id": UUIDS["control"],
+            "characteristic_id": UUIDS["scene"],
+        }
+        cases = [
+            ("read_home_characteristic", target, "read_characteristic"),
+            (
+                "write_home_characteristic",
+                {**target, "value": 72, "confirm": True},
+                "write_characteristic",
+            ),
+            (
+                "run_homekit_scene",
+                {
+                    "home_id": UUIDS["folder"],
+                    "scene_id": UUIDS["scene"],
+                    "confirm": True,
+                },
+                "run_scene",
+            ),
+        ]
+        for name, arguments, operation in cases:
+            with self.subTest(name=name):
+                payload = server.normalize_arguments(name, arguments)
+                with mock.patch.object(
+                    server.companion, "call", return_value={"ok": name}
+                ) as call:
+                    result = server.invoke_home(payload)
+                self.assertEqual(result, {"ok": name})
+                call.assert_called_once_with(operation, payload["companion_arguments"])
+
+    def test_bridge_status_prefers_homekit_and_preserves_shortcuts(self):
+        shortcuts = {
+            "available": True,
+            "folder": "Apple Home MCP",
+            "reads": 1,
+            "controls": 2,
+            "scenes": 3,
+            "ignored_shortcuts": 0,
+        }
+        with mock.patch.object(server, "_shortcuts_status", return_value=shortcuts):
+            with mock.patch.object(
+                server.companion,
+                "call",
+                return_value={"available": True, "authorized": True},
+            ):
+                result = server.invoke_home({"action": "get_home_bridge_status"})
+        self.assertTrue(result["available"])
+        self.assertEqual(result["mode"], "homekit")
+        self.assertEqual(result["shortcuts"], shortcuts)
 
     def test_run_uses_exact_identifier_and_deletes_temporary_input(self):
         groups = {

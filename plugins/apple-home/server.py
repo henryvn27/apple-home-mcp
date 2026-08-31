@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Dependency-free MCP server for curated Apple Home Shortcuts."""
+"""Dependency-free MCP server for Apple HomeKit and Shortcuts."""
 
 import json
+import math
 import os
 import re
 import subprocess
@@ -9,9 +10,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+import companion
+
 
 PROTOCOL_VERSION = "2025-06-18"
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = "0.2.0"
 SHORTCUTS = "/usr/bin/shortcuts"
 DEFAULT_FOLDER = "Apple Home MCP"
 DEFAULT_TIMEOUT = 60
@@ -25,6 +28,10 @@ IDENTIFIER_RE = re.compile(
     r"^(?P<name>.+) \((?P<identifier>[0-9A-Fa-f]{8}"
     r"-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"
     r"-[0-9A-Fa-f]{12})\)$"
+)
+UUID_RE = re.compile(
+    r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-"
+    r"[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
 )
 
 
@@ -64,6 +71,22 @@ CONFIRM_SCHEMA = {
         "Must be true only after the user explicitly requested this physical action."
     ),
 }
+UUID_SCHEMA = {
+    "type": "string",
+    "pattern": (
+        r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-"
+        r"[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    ),
+    "description": "Exact HomeKit UUID returned by list_home_inventory.",
+}
+VALUE_SCHEMA = {
+    "oneOf": [
+        {"type": "boolean"},
+        {"type": "number"},
+        {"type": "string", "maxLength": 1024},
+    ],
+    "description": "Value validated against the characteristic's HomeKit metadata.",
+}
 
 
 TOOLS = [
@@ -71,8 +94,8 @@ TOOLS = [
         "name": "get_home_bridge_status",
         "title": "Get Apple Home Bridge Status",
         "description": (
-            "Check whether the Apple Home MCP Shortcuts folder exists and report "
-            "available read, control, and scene counts without running a shortcut."
+            "Check the direct HomeKit companion and curated Shortcuts fallback "
+            "without reading a characteristic or running an action."
         ),
         "inputSchema": {
             "type": "object",
@@ -80,6 +103,113 @@ TOOLS = [
             "additionalProperties": False,
         },
         "annotations": _annotations("Get Apple Home Bridge Status", read_only=True),
+    },
+    {
+        "name": "list_home_inventory",
+        "title": "List Apple Home Inventory",
+        "description": (
+            "List HomeKit homes, rooms, zones, accessories, services, characteristics, "
+            "properties, metadata, and stable UUIDs from the local companion."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+        "annotations": _annotations("List Apple Home Inventory", read_only=True),
+    },
+    {
+        "name": "read_home_characteristic",
+        "title": "Read Apple Home Characteristic",
+        "description": (
+            "Refresh and return one exact readable HomeKit characteristic by UUID."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "home_id": UUID_SCHEMA,
+                "accessory_id": UUID_SCHEMA,
+                "service_id": UUID_SCHEMA,
+                "characteristic_id": UUID_SCHEMA,
+            },
+            "required": [
+                "home_id",
+                "accessory_id",
+                "service_id",
+                "characteristic_id",
+            ],
+            "additionalProperties": False,
+        },
+        "annotations": _annotations("Read Apple Home Characteristic", read_only=True),
+    },
+    {
+        "name": "write_home_characteristic",
+        "title": "Write Apple Home Characteristic",
+        "description": (
+            "Write one exact HomeKit characteristic after metadata validation and "
+            "explicit confirmation. High-risk controls require companion approval."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "home_id": UUID_SCHEMA,
+                "accessory_id": UUID_SCHEMA,
+                "service_id": UUID_SCHEMA,
+                "characteristic_id": UUID_SCHEMA,
+                "value": VALUE_SCHEMA,
+                "confirm": CONFIRM_SCHEMA,
+            },
+            "required": [
+                "home_id",
+                "accessory_id",
+                "service_id",
+                "characteristic_id",
+                "value",
+                "confirm",
+            ],
+            "additionalProperties": False,
+        },
+        "annotations": _annotations(
+            "Write Apple Home Characteristic",
+            read_only=False,
+            destructive=True,
+            idempotent=False,
+        ),
+    },
+    {
+        "name": "list_homekit_scenes",
+        "title": "List Apple HomeKit Scenes",
+        "description": "List HomeKit action sets and scenes with stable UUIDs.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"home_id": UUID_SCHEMA},
+            "additionalProperties": False,
+        },
+        "annotations": _annotations("List Apple HomeKit Scenes", read_only=True),
+    },
+    {
+        "name": "run_homekit_scene",
+        "title": "Run Apple HomeKit Scene",
+        "description": (
+            "Run one exact HomeKit action set after explicit confirmation. "
+            "High-risk scenes require companion approval."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "home_id": UUID_SCHEMA,
+                "scene_id": UUID_SCHEMA,
+                "confirm": CONFIRM_SCHEMA,
+            },
+            "required": ["home_id", "scene_id", "confirm"],
+            "additionalProperties": False,
+        },
+        "annotations": _annotations(
+            "Run Apple HomeKit Scene",
+            read_only=False,
+            destructive=True,
+            idempotent=False,
+        ),
     },
     {
         "name": "list_home_actions",
@@ -205,6 +335,45 @@ def _timeout(arguments):
     return value
 
 
+def _uuid(value, field):
+    value = _text(value, field, 36, required=True)
+    if not UUID_RE.fullmatch(value):
+        raise UserError("%s must be a HomeKit UUID" % field)
+    return value.lower()
+
+
+def _confirmed(arguments):
+    if arguments.get("confirm") is not True:
+        raise UserError(
+            "confirm must be true after the user explicitly requests this action"
+        )
+
+
+def _characteristic_target(arguments):
+    return {
+        "home_id": _uuid(arguments.get("home_id"), "home_id"),
+        "accessory_id": _uuid(arguments.get("accessory_id"), "accessory_id"),
+        "service_id": _uuid(arguments.get("service_id"), "service_id"),
+        "characteristic_id": _uuid(
+            arguments.get("characteristic_id"), "characteristic_id"
+        ),
+    }
+
+
+def _characteristic_value(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        if not math.isfinite(value):
+            raise UserError("value must be a finite HomeKit value")
+        return value
+    if isinstance(value, str):
+        if "\x00" in value or len(value) > 1024:
+            raise UserError("value must be at most 1024 safe characters")
+        return value
+    raise UserError("value must be a string, number, or boolean")
+
+
 def _folder_name():
     folder = os.environ.get("APPLE_HOME_MCP_FOLDER", DEFAULT_FOLDER).strip()
     if not folder:
@@ -215,10 +384,70 @@ def _folder_name():
 
 
 def normalize_arguments(name, arguments):
-    if name in {"get_home_bridge_status", "list_home_actions"}:
+    if name in {
+        "get_home_bridge_status",
+        "list_home_inventory",
+        "list_home_actions",
+    }:
         _arguments(arguments, set())
         return {"action": name}
 
+    if name == "read_home_characteristic":
+        arguments = _arguments(
+            arguments,
+            {"home_id", "accessory_id", "service_id", "characteristic_id"},
+        )
+        return {
+            "action": name,
+            "companion_operation": "read_characteristic",
+            "companion_arguments": _characteristic_target(arguments),
+        }
+    if name == "write_home_characteristic":
+        arguments = _arguments(
+            arguments,
+            {
+                "home_id",
+                "accessory_id",
+                "service_id",
+                "characteristic_id",
+                "value",
+                "confirm",
+            },
+        )
+        _confirmed(arguments)
+        if "value" not in arguments:
+            raise UserError("value is required")
+        target = _characteristic_target(arguments)
+        target.update({"value": _characteristic_value(arguments["value"]), "confirm": True})
+        return {
+            "action": name,
+            "companion_operation": "write_characteristic",
+            "companion_arguments": target,
+        }
+    if name == "list_homekit_scenes":
+        arguments = _arguments(arguments, {"home_id"})
+        payload = {
+            "action": name,
+            "companion_operation": "list_scenes",
+            "companion_arguments": {},
+        }
+        if "home_id" in arguments:
+            payload["companion_arguments"]["home_id"] = _uuid(
+                arguments["home_id"], "home_id"
+            )
+        return payload
+    if name == "run_homekit_scene":
+        arguments = _arguments(arguments, {"home_id", "scene_id", "confirm"})
+        _confirmed(arguments)
+        return {
+            "action": name,
+            "companion_operation": "run_scene",
+            "companion_arguments": {
+                "home_id": _uuid(arguments.get("home_id"), "home_id"),
+                "scene_id": _uuid(arguments.get("scene_id"), "scene_id"),
+                "confirm": True,
+            },
+        }
     if name == "read_home_state":
         arguments = _arguments(arguments, {"name", "input", "timeout_seconds"})
         payload = {
@@ -231,10 +460,7 @@ def normalize_arguments(name, arguments):
         arguments = _arguments(
             arguments, {"name", "input", "timeout_seconds", "confirm"}
         )
-        if arguments.get("confirm") is not True:
-            raise UserError(
-                "confirm must be true after the user explicitly requests this action"
-            )
+        _confirmed(arguments)
         payload = {
             "action": name,
             "kind": "control" if name == "run_home_action" else "scene",
@@ -370,7 +596,7 @@ def _public_actions(folder, groups, ignored):
     }
 
 
-def _bridge_status():
+def _shortcuts_status():
     try:
         folder, groups, ignored = _discover_shortcuts()
     except UserError as error:
@@ -390,6 +616,34 @@ def _bridge_status():
         "scenes": len(groups["scene"]),
         "ignored_shortcuts": ignored,
     }
+
+
+def _bridge_status():
+    shortcuts = _shortcuts_status()
+    try:
+        homekit = companion.call("status", timeout=3)
+        if not isinstance(homekit, dict) or not isinstance(
+            homekit.get("available"), bool
+        ):
+            raise companion.CompanionError(
+                "Apple Home Bridge returned an invalid status"
+            )
+    except companion.CompanionError as error:
+        homekit = {"available": False, "reason": str(error)}
+    result = dict(shortcuts)
+    result.update(
+        {
+            "available": homekit["available"] or shortcuts["available"],
+            "mode": (
+                "homekit"
+                if homekit["available"]
+                else "shortcuts" if shortcuts["available"] else "unavailable"
+            ),
+            "homekit": homekit,
+            "shortcuts": shortcuts,
+        }
+    )
+    return result
 
 
 def _select_shortcut(kind, name):
@@ -463,6 +717,18 @@ def invoke_home(payload):
         return _bridge_status()
     if action == "list_home_actions":
         return _public_actions(*_discover_shortcuts())
+    if action == "list_home_inventory":
+        try:
+            return companion.call("inventory")
+        except companion.CompanionError as error:
+            raise UserError(str(error))
+    if "companion_operation" in payload:
+        try:
+            return companion.call(
+                payload["companion_operation"], payload["companion_arguments"]
+            )
+        except companion.CompanionError as error:
+            raise UserError(str(error))
     if action in {"read_home_state", "run_home_action", "run_home_scene"}:
         return _run_shortcut(
             payload["kind"],
@@ -504,6 +770,16 @@ def call_tool(params):
             len(result["controls"]),
             len(result["scenes"]),
         )
+    elif name == "list_home_inventory":
+        message = "Listed direct HomeKit inventory."
+    elif name == "read_home_characteristic":
+        message = "Read HomeKit characteristic."
+    elif name == "write_home_characteristic":
+        message = "Wrote HomeKit characteristic."
+    elif name == "list_homekit_scenes":
+        message = "Listed HomeKit scenes."
+    elif name == "run_homekit_scene":
+        message = "Ran HomeKit scene."
     elif name == "read_home_state":
         message = "Read “%s”." % result["name"]
     elif name == "run_home_action":
@@ -540,10 +816,11 @@ def handle_message(message):
                 "capabilities": {"tools": {"listChanged": False}},
                 "serverInfo": {"name": "apple-home", "version": SERVER_VERSION},
                 "instructions": (
-                    "Uses only shortcuts in the Apple Home MCP folder. List actions "
-                    "before calling them. Read shortcuts must start with 'Read - ', "
-                    "controls with 'Control - ', and scenes with 'Scene - '. Set "
-                    "confirm=true only after the user explicitly requests a physical action."
+                    "Use the direct HomeKit companion for granular inventory, fresh "
+                    "characteristic reads, validated writes, and scenes. Stable UUIDs "
+                    "come from list_home_inventory. Set confirm=true only after the "
+                    "user explicitly requests a physical write or scene. The curated "
+                    "Apple Home MCP Shortcuts folder remains a fallback."
                 ),
             },
         )
