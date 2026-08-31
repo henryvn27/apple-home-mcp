@@ -1,0 +1,61 @@
+name: Swift Companion
+
+on:
+  push:
+    paths:
+      - "AppleHomeBridge/**"
+      - "AppleHomeBridgeTests/**"
+      - "AppleHomeBridge.xcodeproj/**"
+      - ".github/workflows/swift-companion.yml"
+  pull_request:
+    paths:
+      - "AppleHomeBridge/**"
+      - "AppleHomeBridgeTests/**"
+      - "AppleHomeBridge.xcodeproj/**"
+      - ".github/workflows/swift-companion.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  catalyst-tests:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test Mac Catalyst companion
+        run: |
+          xcodebuild test \
+            -project AppleHomeBridge.xcodeproj \
+            -scheme AppleHomeBridge \
+            -destination 'platform=macOS,variant=Mac Catalyst' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+  ios-simulator:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build generic iOS Simulator companion
+        run: |
+          xcodebuild build \
+            -project AppleHomeBridge.xcodeproj \
+            -scheme AppleHomeBridge \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+      - name: Test on an exact iOS Simulator
+        run: |
+          udid="$(xcrun simctl list devices available -j | ruby -rjson -e '
+            devices = JSON.parse(STDIN.read).fetch("devices").values.flatten
+            device = devices.find { |candidate| candidate["isAvailable"] && candidate.fetch("name", "").start_with?("iPhone") }
+            abort "No available iPhone simulator" unless device
+            puts device.fetch("udid")
+          ')"
+          xcodebuild test \
+            -project AppleHomeBridge.xcodeproj \
+            -scheme AppleHomeBridge \
+            -destination "platform=iOS Simulator,id=${udid}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
