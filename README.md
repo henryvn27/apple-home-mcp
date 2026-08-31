@@ -48,29 +48,79 @@ Bridge companion described below; the Shortcuts fallback does not.
 
 ### Let an agent install it
 
-Paste this into a Codex task:
+Paste this into a Codex task. The agent should complete the installation instead
+of returning a checklist:
 
 ```text
-Install the Apple Home plugin from
-https://github.com/henryvn27/apple-home-mcp on this Mac.
+Fully install and verify Apple Home MCP from
+https://github.com/henryvn27/apple-home-mcp on this Mac. Own the workflow end to
+end. Do not stop after printing commands or telling me to open Xcode.
 
-First inspect configured plugin marketplaces and installed plugins. If an
-Apple Home plugin is already enabled from another marketplace, stop and explain
-the conflict. Do not install a duplicate or remove existing config.
+Safety rules:
+- Do not enumerate my Home, reveal accessory or room names, create shortcuts,
+  or run any Home write, control, or scene during installation.
+- Do not edit Codex config files by hand. Do not remove another plugin,
+  overwrite a dirty checkout, or discard uncommitted work.
+- Pause only when Apple requires a human action: signing into an Apple account,
+  choosing between multiple eligible development teams, or accepting the Home
+  permission dialog. Ask one precise question, wait, then continue the install
+  automatically.
 
-Otherwise, run:
-codex plugin marketplace add henryvn27/apple-home-mcp
-codex plugin add apple-home@apple-home-mcp
+Complete these steps:
 
-Verify that apple-home@apple-home-mcp is installed and enabled. Tell me to start
-a new Codex task so the plugin loads. For direct HomeKit access, point me to the
-Apple Home Bridge setup in the repository and explain that I must choose a
-development team and grant Home access myself. If I prefer the Shortcuts
-fallback, tell me how to create the Apple Home MCP folder. Do not inspect Home
-data, create shortcuts, or run a physical action during installation.
+1. Confirm this is macOS. Inspect `codex plugin marketplace list` and
+   `codex plugin list`. If `apple-home` is installed from a different
+   marketplace, stop and report the exact conflict without changing it.
+2. If the `apple-home-mcp` marketplace is absent, run
+   `codex plugin marketplace add henryvn27/apple-home-mcp`. If it is already
+   configured, run `codex plugin marketplace upgrade apple-home-mcp`.
+3. Install `apple-home@apple-home-mcp` if needed. Verify it is enabled and its
+   installed version is 0.2.0 or newer. Treat a marketplace refresh that updates
+   the installed plugin as success; do not remove and reinstall it unnecessarily.
+4. Prepare a source checkout at `~/Developer/apple-home-mcp`. Clone it when
+   absent. If it is the correct repository and clean, fetch and fast-forward its
+   default branch. If that path is dirty, belongs to another repository, or is
+   owned by active work, preserve it and use a new sibling directory. Record the
+   exact source path and commit.
+5. From that checkout, run the Python unit tests, Python bytecode compilation,
+   JSON manifest checks, entitlement lint, workflow YAML parsing, plugin
+   validation when its validator is available, and `git diff --check`. Then run
+   the signing-disabled Mac Catalyst test/build gate. Do not weaken or skip a
+   failed check.
+6. Build a signed Release Mac Catalyst app from
+   `AppleHomeBridge.xcodeproj`, scheme `AppleHomeBridge`, destination
+   `platform=macOS,variant=Mac Catalyst`. Use the full Xcode developer directory
+   for the command without changing the machine-wide selection. If exactly one
+   eligible Apple Development team is available, use it automatically with
+   automatic signing and provisioning updates. If no team is available or more
+   than one is eligible, open the project in Xcode and ask me only for the
+   Apple-required account or team choice; resume as soon as I answer.
+7. Use Xcode build settings to resolve the produced app path. Install the signed
+   app as `~/Applications/Apple Home Bridge.app`, preserving its signature, and
+   launch it. Do not run the app from DerivedData as the final installation.
+8. Handle the Home permission step. Bring Apple Home Bridge forward and ask me
+   to approve the macOS Home permission dialog if it appears. Continue after I
+   approve it. Verify the app reports an authorized, loaded HomeKit store without
+   listing any Home data.
+9. Verify the bridge descriptor at
+   `~/Library/Containers/com.henryvanness.apple-home-bridge/Data/Library/Application Support/Apple Home Bridge/bridge.json`.
+   Require a regular file owned by the current user with mode 0600, schema
+   version 1, host 127.0.0.1, a live PID, and a loopback port. Never print its
+   bearer token.
+10. If Codex task creation is available, create a fresh projectless task titled
+    `VERIFY · Apple Home` so the newly installed plugin loads. Ask that task to
+    call only `get_home_bridge_status`, wait for its result, and return the
+    status here. If task creation is unavailable, say that a new Codex task is
+    the single remaining reload step; do not claim the plugin was runtime-tested.
+
+Finish with the installed plugin version, source commit and path, installed app
+path, signing team used, test results, descriptor checks, and fresh-task bridge
+status. Report any unmet gate exactly. Do not claim completion based only on a
+successful build or marketplace command.
 ```
 
-Start a new Codex task after installation.
+Apple's account, signing, and privacy dialogs cannot be bypassed. The prompt
+keeps those human steps narrow and makes the agent continue afterward.
 
 ## Direct HomeKit setup
 
