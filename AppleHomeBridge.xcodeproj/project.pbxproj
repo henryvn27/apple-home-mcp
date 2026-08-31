@@ -1,0 +1,154 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		F00000000000000000000001 /* AppleHomeBridgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000001 /* AppleHomeBridgeApp.swift */; };
+		F00000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000002 /* ContentView.swift */; };
+		F00000000000000000000003 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000003 /* JSONValue.swift */; };
+		F00000000000000000000004 /* BridgeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000004 /* BridgeModels.swift */; };
+		F00000000000000000000005 /* ValueValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* ValueValidator.swift */; };
+		F00000000000000000000006 /* HomeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* HomeStore.swift */; };
+		F00000000000000000000007 /* HomeKitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000007 /* HomeKitStore.swift */; };
+		F00000000000000000000008 /* BridgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000008 /* BridgeService.swift */; };
+		F00000000000000000000009 /* LoopbackBridgeServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000009 /* LoopbackBridgeServer.swift */; };
+		F00000000000000000000010 /* MockHomeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000001 /* MockHomeStore.swift */; };
+		F00000000000000000000011 /* ValueValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000002 /* ValueValidatorTests.swift */; };
+		F00000000000000000000012 /* BridgeServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000003 /* BridgeServiceTests.swift */; };
+		F00000000000000000000013 /* LoopbackBridgeServerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000004 /* LoopbackBridgeServerTests.swift */; };
+		F00000000000000000000014 /* HomeKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000001 /* HomeKit.framework */; };
+		F00000000000000000000015 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000002 /* Security.framework */; };
+		F00000000000000000000016 /* ApprovalGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000012 /* ApprovalGate.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D00000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E00000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E00000000000000000000002;
+			remoteInfo = AppleHomeBridge;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		A00000000000000000000001 /* AppleHomeBridgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHomeBridgeApp.swift; sourceTree = "<group>"; };
+		A00000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A00000000000000000000003 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
+		A00000000000000000000004 /* BridgeModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeModels.swift; sourceTree = "<group>"; };
+		A00000000000000000000005 /* ValueValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ValueValidator.swift; sourceTree = "<group>"; };
+		A00000000000000000000006 /* HomeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeStore.swift; sourceTree = "<group>"; };
+		A00000000000000000000007 /* HomeKitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeKitStore.swift; sourceTree = "<group>"; };
+		A00000000000000000000008 /* BridgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeService.swift; sourceTree = "<group>"; };
+		A00000000000000000000009 /* LoopbackBridgeServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopbackBridgeServer.swift; sourceTree = "<group>"; };
+		A00000000000000000000010 /* AppleHomeBridge.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AppleHomeBridge.entitlements; sourceTree = "<group>"; };
+		A00000000000000000000011 /* AppleHomeBridge-Catalyst.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "AppleHomeBridge-Catalyst.entitlements"; sourceTree = "<group>"; };
+		A00000000000000000000012 /* ApprovalGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalGate.swift; sourceTree = "<group>"; };
+		B00000000000000000000001 /* MockHomeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockHomeStore.swift; sourceTree = "<group>"; };
+		B00000000000000000000002 /* ValueValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ValueValidatorTests.swift; sourceTree = "<group>"; };
+		B00000000000000000000003 /* BridgeServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeServiceTests.swift; sourceTree = "<group>"; };
+		B00000000000000000000004 /* LoopbackBridgeServerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopbackBridgeServerTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000001 /* HomeKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HomeKit.framework; path = System/Library/Frameworks/HomeKit.framework; sourceTree = SDKROOT; };
+		C00000000000000000000002 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		E00000000000000000000004 /* AppleHomeBridge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AppleHomeBridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E00000000000000000000005 /* AppleHomeBridgeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppleHomeBridgeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E00000000000000000000010 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (F00000000000000000000014, F00000000000000000000015,); runOnlyForDeploymentPostprocessing = 0; };
+		E00000000000000000000011 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E00000000000000000000006 = {
+			isa = PBXGroup;
+			children = (
+				E00000000000000000000007 /* AppleHomeBridge */,
+				E00000000000000000000008 /* AppleHomeBridgeTests */,
+				E00000000000000000000009 /* Frameworks */,
+				E00000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E00000000000000000000003 /* Products */ = {isa = PBXGroup; children = (E00000000000000000000004 /* AppleHomeBridge.app */, E00000000000000000000005 /* AppleHomeBridgeTests.xctest */,); name = Products; sourceTree = "<group>"; };
+		E00000000000000000000007 /* AppleHomeBridge */ = {isa = PBXGroup; children = (A00000000000000000000001, A00000000000000000000002, A00000000000000000000003, A00000000000000000000004, A00000000000000000000005, A00000000000000000000006, A00000000000000000000007, A00000000000000000000008, A00000000000000000000009, A00000000000000000000010, A00000000000000000000011, A00000000000000000000012,); path = AppleHomeBridge; sourceTree = "<group>"; };
+		E00000000000000000000008 /* AppleHomeBridgeTests */ = {isa = PBXGroup; children = (B00000000000000000000001, B00000000000000000000002, B00000000000000000000003, B00000000000000000000004,); path = AppleHomeBridgeTests; sourceTree = "<group>"; };
+		E00000000000000000000009 /* Frameworks */ = {isa = PBXGroup; children = (C00000000000000000000001, C00000000000000000000002,); name = Frameworks; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E00000000000000000000002 /* AppleHomeBridge */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E00000000000000000000030 /* Build configuration list for PBXNativeTarget "AppleHomeBridge" */;
+			buildPhases = (E00000000000000000000012 /* Sources */, E00000000000000000000010 /* Frameworks */, E00000000000000000000014 /* Resources */,);
+			buildRules = ();
+			dependencies = ();
+			name = AppleHomeBridge;
+			productName = AppleHomeBridge;
+			productReference = E00000000000000000000004 /* AppleHomeBridge.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E00000000000000000000020 /* AppleHomeBridgeTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E00000000000000000000031 /* Build configuration list for PBXNativeTarget "AppleHomeBridgeTests" */;
+			buildPhases = (E00000000000000000000013 /* Sources */, E00000000000000000000011 /* Frameworks */, E00000000000000000000015 /* Resources */,);
+			buildRules = ();
+			dependencies = (E00000000000000000000021 /* PBXTargetDependency */,);
+			name = AppleHomeBridgeTests;
+			productName = AppleHomeBridgeTests;
+			productReference = E00000000000000000000005 /* AppleHomeBridgeTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2600; LastUpgradeCheck = 2600; TargetAttributes = {E00000000000000000000002 = {CreatedOnToolsVersion = 26.0;}; E00000000000000000000020 = {CreatedOnToolsVersion = 26.0; TestTargetID = E00000000000000000000002;};};};
+			buildConfigurationList = E00000000000000000000032 /* Build configuration list for PBXProject "AppleHomeBridge" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base,);
+			mainGroup = E00000000000000000000006;
+			productRefGroup = E00000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (E00000000000000000000002 /* AppleHomeBridge */, E00000000000000000000020 /* AppleHomeBridgeTests */,);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E00000000000000000000014 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		E00000000000000000000015 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E00000000000000000000012 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (F00000000000000000000001, F00000000000000000000002, F00000000000000000000003, F00000000000000000000004, F00000000000000000000005, F00000000000000000000006, F00000000000000000000007, F00000000000000000000008, F00000000000000000000009, F00000000000000000000016,); runOnlyForDeploymentPostprocessing = 0; };
+		E00000000000000000000013 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (F00000000000000000000010, F00000000000000000000011, F00000000000000000000012, F00000000000000000000013,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E00000000000000000000021 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = E00000000000000000000002 /* AppleHomeBridge */; targetProxy = D00000000000000000000001 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		E00000000000000000000040 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES; GCC_C_LANGUAGE_STANDARD = gnu17; GCC_OPTIMIZATION_LEVEL = 0; ONLY_ACTIVE_ARCH = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)"; SWIFT_OPTIMIZATION_LEVEL = "-Onone";}; name = Debug; };
+		E00000000000000000000041 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; ENABLE_NS_ASSERTIONS = NO; GCC_C_LANGUAGE_STANDARD = gnu17; SWIFT_COMPILATION_MODE = wholemodule; VALIDATE_PRODUCT = YES;}; name = Release; };
+		E00000000000000000000042 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AppleHomeBridge/AppleHomeBridge.entitlements; "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "AppleHomeBridge/AppleHomeBridge-Catalyst.entitlements"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Apple Home Bridge"; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_NSHomeKitUsageDescription = "Apple Home Bridge reads and controls the homes and accessories you choose through public HomeKit APIs."; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; MACOSX_DEPLOYMENT_TARGET = 14.0; MARKETING_VERSION = 0.2.0; PRODUCT_BUNDLE_IDENTIFIER = "com.henryvanness.apple-home-bridge"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx"; SUPPORTS_MACCATALYST = YES; SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Debug; };
+		E00000000000000000000043 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AppleHomeBridge/AppleHomeBridge.entitlements; "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "AppleHomeBridge/AppleHomeBridge-Catalyst.entitlements"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Apple Home Bridge"; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_NSHomeKitUsageDescription = "Apple Home Bridge reads and controls the homes and accessories you choose through public HomeKit APIs."; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; MACOSX_DEPLOYMENT_TARGET = 14.0; MARKETING_VERSION = 0.2.0; PRODUCT_BUNDLE_IDENTIFIER = "com.henryvanness.apple-home-bridge"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx"; SUPPORTS_MACCATALYST = YES; SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Release; };
+		E00000000000000000000044 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MACOSX_DEPLOYMENT_TARGET = 14.0; PRODUCT_BUNDLE_IDENTIFIER = "com.henryvanness.apple-home-bridge.tests"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx"; SUPPORTS_MACCATALYST = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AppleHomeBridge.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AppleHomeBridge";}; name = Debug; };
+		E00000000000000000000045 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MACOSX_DEPLOYMENT_TARGET = 14.0; PRODUCT_BUNDLE_IDENTIFIER = "com.henryvanness.apple-home-bridge.tests"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx"; SUPPORTS_MACCATALYST = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AppleHomeBridge.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AppleHomeBridge";}; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E00000000000000000000030 = {isa = XCConfigurationList; buildConfigurations = (E00000000000000000000042, E00000000000000000000043,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		E00000000000000000000031 = {isa = XCConfigurationList; buildConfigurations = (E00000000000000000000044, E00000000000000000000045,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		E00000000000000000000032 = {isa = XCConfigurationList; buildConfigurations = (E00000000000000000000040, E00000000000000000000041,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = E00000000000000000000001 /* Project object */;
+}
