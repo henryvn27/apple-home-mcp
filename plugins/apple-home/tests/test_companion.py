@@ -135,6 +135,20 @@ class CompanionTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(companion.CompanionError, "newline"):
                     companion.call("status")
+            connection = FakeConnection(b'{"ok":true,"result":[]}\n')
+            with mock.patch.object(
+                companion.socket, "create_connection", return_value=connection
+            ):
+                with self.assertRaisesRegex(companion.CompanionError, "invalid result"):
+                    companion.call("status")
+            connection = FakeConnection(
+                b'{"ok":false,"error":{"message":"missing code"}}\n'
+            )
+            with mock.patch.object(
+                companion.socket, "create_connection", return_value=connection
+            ):
+                with self.assertRaisesRegex(companion.CompanionError, "invalid error"):
+                    companion.call("status")
         with self.assertRaisesRegex(companion.CompanionError, "unsupported"):
             companion.call("delete_home")
 

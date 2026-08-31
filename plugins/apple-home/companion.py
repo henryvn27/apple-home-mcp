@@ -148,10 +148,14 @@ def call(operation, arguments=None, *, timeout=15):
     if not isinstance(response, dict) or not isinstance(response.get("ok"), bool):
         raise CompanionError("Apple Home Bridge returned an invalid response envelope")
     if response["ok"]:
-        if "result" not in response:
-            raise CompanionError("Apple Home Bridge response is missing its result")
+        if not isinstance(response.get("result"), dict):
+            raise CompanionError("Apple Home Bridge returned an invalid result")
         return response["result"]
     error = response.get("error")
-    if not isinstance(error, dict) or not isinstance(error.get("message"), str):
+    if (
+        not isinstance(error, dict)
+        or not isinstance(error.get("code"), str)
+        or not isinstance(error.get("message"), str)
+    ):
         raise CompanionError("Apple Home Bridge returned an invalid error")
     raise CompanionError(error["message"][:500])
